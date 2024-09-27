@@ -21,7 +21,7 @@
     width: calc(10vw * 1.414);
     height: 0vw;
     position: absolute;
-    border: 1px solid var(--pri-fontcolor);;
+    border: 1px solid var(--pri-fontcolor);
 }
 .home > span:first-child, .destination>span:first-child{
     top: 50%;
@@ -53,7 +53,7 @@
 
 /* player board */
 .playerBoard{
-    border: 1px solid var(--pri-fontcolor);;
+    border: 1px solid var(--pri-fontcolor);
     width: 60%;
     height: 400px;
     margin: 5% auto;
@@ -62,7 +62,7 @@
 }
 .playerBoard>div{
     margin: 2% auto;
-    border: 1px solid var(--pri-fontcolor);;
+    border: 1px solid var(--pri-fontcolor);
     padding: 2% 4%;
     
     display: flex;
