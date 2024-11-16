@@ -3,10 +3,12 @@
 import { indianLudoObject, indianLudoPlayer } from "@/types/indian-ludo";
 import { useEffect, useState } from "react";
 import style from "../../styles/indian-ludo/style.module.css";
+import {getNextCell} from './helper'
 
 const default_array: indianLudoObject[][] = [];
 const players_array: indianLudoPlayer[] = [];
 
+// setting default grid
 for (let i = 0; i < 5; i++) {
   const row: indianLudoObject[] = [];
 
@@ -35,9 +37,91 @@ for (let i = 0; i < 5; i++) {
 export default function IndianLudo() {
   const [ludo, setLudo] = useState(default_array);
   const [players, setPlayers] = useState(players_array);
+  const [turn, setTurn] = useState(0);
+  const [isRolled, setIsRolled] = useState(false);
+  const [roll, setRoll] = useState(0);
+  // const 
 
   const no = 4;
 
+  // click after roll is diced: to move pawn
+  const pawnClick = (indianLudoObject:indianLudoObject, playerpawns:{player:indianLudoPlayer, count:number})=> {
+    
+    const {position} = indianLudoObject;
+    const {player} = playerpawns;
+    const result = getNextCell(position, player.home, roll);
+
+    setLudo(prev=>{
+      prev.forEach((row)=>{
+
+        row.forEach((cell)=>{
+          // reducing player for original position
+          if(position.x == cell.position.x && position.y == cell.position.y){
+
+            let iscountZero = false;
+            cell.players.forEach((player_d)=>{
+              if(player.id == player_d.player.id){
+                player_d.count--;
+
+                if(!player_d.count){
+                  iscountZero = true;
+                }
+              }
+
+            })
+            if(iscountZero) cell.players = cell.players.filter((val)=>val.player.id != player.id);
+          }
+
+          // adding player in new position
+          if(result.x == cell.position.x && result.y == cell.position.y){
+            let notExists = true;
+
+            cell.players.forEach((player_d)=>{
+              if(player_d.player.id == player.id){
+                player_d.count++;
+                notExists = false;
+              }
+            })
+
+            if(notExists){
+              cell.players.push({count:1, player})
+            }
+          }
+        })
+      })
+
+      return prev;
+    });
+    setIsRolled(false);
+    setRoll(0)
+    setTurn(prev=>{
+      if(prev==3){
+        return 0
+      }else return ++prev;
+    })
+  }
+
+  const handleRoll = () => {
+    setIsRolled(true);
+    const num = Math.ceil(Math.random()*100);
+    let rolledNum = 1;
+
+    if (num > 96) {
+      rolledNum = 8;
+    } else if (num > 89) {
+      rolledNum = 4;
+    } else if (num > 54) {
+      rolledNum = 3;
+    } else if (num > 27) {
+      rolledNum = 2;
+    } else if (num > 0) {
+      rolledNum = 1;
+    }
+
+    setRoll(rolledNum);
+  }
+
+  // setting first data
   useEffect(() => {
     const array: indianLudoPlayer[] = [];
 
@@ -70,22 +154,27 @@ export default function IndianLudo() {
       if (homePos.x >= 0 && homePos.y >= 0) {
         setLudo((prev) => {
           prev[homePos.x][homePos.y].homeOf = player;
+          prev[homePos.x][homePos.y].players = [{player, count:4}]; 
           return prev;
         });
       }
     }
     setPlayers(() => [...array]);
+
+    console.log("mount");
+
+    // getNextCell({x:2, });
   }, []);
 
   return (
     <section>
-      {/* grid */}
-      <table className={style.table}>
-        <tbody>
+      <div className={style.playboard}>
+        {/* grid */}
+        <div className={style.table}>
           {ludo.map((row) => (
-            <tr key={`row-${row[0].id}`}>
+            <div key={`row-${row[0].id}`}>
               {row.map((cell) => (
-                <td key={`cell-${cell.id}`}>
+                <div key={`cell-${cell.id}`}>
                   {/* home */}
                   {cell.isHome ? (
                     <div
@@ -108,12 +197,61 @@ export default function IndianLudo() {
                   ) : (
                     ""
                   )}
-                </td>
+
+                  {/* player goti */}
+
+                  {cell.players.map((playerpawns) => (
+                    <button
+                      key={`player-goti-${playerpawns.player.name}`}
+                      className={`${style.playerpawns} ${
+                        playerpawns.player.id == players[turn].id && roll
+                          ? style.playerpawnsOnTurn
+                          : ""
+                      }`}
+                      data-player-color={playerpawns.player.color}
+                      onClick={() => {
+                        pawnClick(cell, playerpawns);
+                      }}
+                      disabled={!isRolled || turn != playerpawns.player.id}
+                    >
+                      { playerpawns.count}
+                    </button>
+                  ))}
+                </div>
               ))}
-            </tr>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+
+        {/* dice */}
+        <div className={style.diceBox}>
+          {players.length > 0 ? (
+            <div>
+              <div>
+                {roll ? (
+                  <p style={{ color: players[turn].color }}>
+                    {roll ? roll : "-"}
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleRoll}
+                    disabled={roll ? true : false}
+                    style={{
+                      backgroundColor: players[turn].color,
+                      color: "black",
+                    }}
+                  >
+                    Roll
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            ""
+          )}
+        </div>
+      </div>
+
       {/* player board */}
       <div className={style.playerBoard}>
         {players.map((player) => (
@@ -123,6 +261,7 @@ export default function IndianLudo() {
               className={style.playerColor}
               data-player-color={player.color}
             ></p>
+            <p>{player.id + 1}</p>
           </div>
         ))}
       </div>

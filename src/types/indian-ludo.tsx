@@ -8,7 +8,7 @@ type indianLudoPlayer = {
 
 type indianLudoObject = {
     id:number,
-    players:indianLudoPlayer[] | null,
+    players:{player:indianLudoPlayer, count:number}[],
     position:{x:number, y:number},
     isHome:boolean,
     isDestination:boolean,
