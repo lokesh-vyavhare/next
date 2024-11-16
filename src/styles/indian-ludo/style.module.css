@@ -1,14 +1,33 @@
 /* board */
+
+.playboard{
+    display: flex;
+    justify-content: space-around;
+    width: 90%;
+    height: 80vh;
+    margin: auto;
+}
 .table{
     border: 1px solid var(--pri-fontcolor);
-    border-collapse: collapse;
     margin: 5% auto;
+    width: 40vw;
+    height: 40vw;
 }
 
-.table tr td{
+.table > div{
+    display: flex;
+    width: 100%;
+    height: 20%;
+}
+.table > div > div{
     border: 1px solid var(--pri-fontcolor);
-    width: 10vw;
-    height: 10vw;
+    position: relative;
+    height: 100%;
+    width: 20%;
+}
+
+.scaleup{
+    scale: 1.5;
 }
 
 .home, .destination{
@@ -18,7 +37,7 @@
 }
 .home > span, .destination > span{
     display: block;
-    width: calc(10vw * 1.414);
+    width: calc(100% * 1.414);
     height: 0vw;
     position: absolute;
     border: 1px solid var(--pri-fontcolor);
@@ -49,6 +68,82 @@
 
 .destination{
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* playerpawns */
+.playerpawns {
+    position: absolute;
+    width: 25%;
+    height: 25%;
+    border: 1px solid var(--pri-fontcolor);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    color: black;
+    border-radius: 50%;
+}
+
+.playerpawns[data-player-color="red"]{
+    background-color: var(--ludo-red);
+    border:1px solid var(--ludo-red);
+    top: 5%;
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+.playerpawns[data-player-color="blue"]{
+    background-color: var(--ludo-blue);
+    border:1px solid var(--ludo-blue);
+    bottom: 5%;
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+.playerpawns[data-player-color="green"]{
+    background-color: var(--ludo-green);
+    border:1px solid var(--ludo-green);
+    top: 50%;
+    left: 5%;
+    transform: translate(0, -50%);
+}
+.playerpawns[data-player-color="yellow"]{
+    background-color: var(--ludo-yellow);
+    border:1px solid var(--ludo-yellow);
+    top: 50%;
+    right: 5%;
+    transform: translate(0, -50%);
+}
+
+.playerpawnsOnTurn[data-player-color="red"]{
+    transform: translate(-25%, 25%);
+    scale: 2;
+}
+.playerpawnsOnTurn[data-player-color="blue"]{
+    transform: translate(-25%, -25%);
+    scale: 2;
+}
+.playerpawnsOnTurn[data-player-color="green"]{
+    transform: translate(25%, -25%);
+    scale: 2;
+}
+.playerpawnsOnTurn[data-player-color="yellow"]{
+    transform: translate(-25%, -25%);
+    scale: 2;
+}
+
+/* dice */
+.diceBox{
+    border: 1px solid var(--pri-fontcolor);
+    width: 40vw;
+    height: 40vw;
+    margin: 5% auto;
+    
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.diceBox p{
+    font-size: 32px;
 }
 
 /* player board */
