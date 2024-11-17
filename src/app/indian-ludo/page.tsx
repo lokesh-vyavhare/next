@@ -51,55 +51,134 @@ export default function IndianLudo() {
     const {player} = playerpawns;
     const result = getNextCell(position, player.home, roll);
 
-    setLudo(prev=>{
-      prev.forEach((row)=>{
+    if(result.x<0 && result.y<0) return;
 
-        row.forEach((cell)=>{
-          // reducing player for original position
-          if(position.x == cell.position.x && position.y == cell.position.y){
+    let isMoveValid = true, isKill=false;
+    const wonPlayers:number[]=[];
 
-            let iscountZero = false;
-            cell.players.forEach((player_d)=>{
-              if(player.id == player_d.player.id){
-                player_d.count--;
+    setLudo((prev) => {
 
-                if(!player_d.count){
-                  iscountZero = true;
+      const cell = prev[result.y][result.x];
+
+      if (result.x == cell.position.x && result.y == cell.position.y) {
+
+        const removedPlayer:number[] = [];
+
+        if (!cell.isHome || !cell.isDestination) {
+          cell.players.forEach((player_d) => {
+            if (player_d.player.id == player.id) {
+              isMoveValid = false;
+            }else{
+              removedPlayer.push(player_d.player.id);
+            }
+
+          });
+        }
+
+        isKill = !!(removedPlayer.length);
+
+
+        if (!isMoveValid) return prev;
+
+        if (!cell.isHome) {
+          cell.players.push({ count: 1, player });
+          cell.players = cell.players.filter(
+            (val) => val.player.id == player.id
+          );
+
+          players.forEach((player_r)=>{
+            if(removedPlayer.includes(player_r.id)){
+              isKill = true;
+
+              let findIndex =  -1;
+
+              if(player_r.home){
+                player_r.home.players.forEach((val, ind)=>{
+                  if(val.player.id == player_r.id){
+                    val.count++;
+                    findIndex = ind;
+                  }
+                })
+
+                if(findIndex==-1){
+                  player_r.home?.players.push({ player: player_r, count: 1 });
                 }
               }
-
-            })
-            if(iscountZero) cell.players = cell.players.filter((val)=>val.player.id != player.id);
-          }
-
-          // adding player in new position
-          if(result.x == cell.position.x && result.y == cell.position.y){
-            let notExists = true;
-
-            cell.players.forEach((player_d)=>{
-              if(player_d.player.id == player.id){
-                player_d.count++;
-                notExists = false;
-              }
-            })
-
-            if(notExists){
-              cell.players.push({count:1, player})
             }
+          })
+        } else {
+          let notExists = true;
+
+          cell.players.forEach((player_d) => {
+            if (player_d.player.id == player.id) {
+              player_d.count++;
+              notExists = false;
+            }
+          });
+
+          if (notExists) {
+            cell.players.push({ count: 1, player });
+          }
+        }
+      }
+
+
+      const oldCell = prev[position.y][position.x];
+      let iscountZero = false;
+      oldCell.players.forEach((player_d) => {
+        if (player.id == player_d.player.id) {
+          player_d.count--;
+
+          if (!player_d.count) {
+            iscountZero = true;
+          }
+        }
+      });
+      if (iscountZero)
+        oldCell.players = oldCell.players.filter((val) => val.player.id != player.id);
+
+      if(result.x ==2 && result.y==2){
+        prev[2][2].players.forEach((val)=>{
+          if(val.count == 4){
+            wonPlayers.push(val.player.id);
           }
         })
-      })
+      }
+
+
+      if (
+        !(roll == 4 || roll == 8 || isKill || (result.x == 2 && result.y == 2)) ||
+        wonPlayers.includes(player.id)
+      ) {
+        handToNextPerson(wonPlayers);
+      }
+      setRoll(0);
 
       return prev;
     });
-    setIsRolled(false);
-    setRoll(0)
-    setTurn(prev=>{
-      if(prev==3){
-        return 0
-      }else return ++prev;
-    })
+
+    
   }
+
+  const handToNextPerson = (wonPlayers:number[]) => {
+    setIsRolled(false);
+    setTurn((prev) => {
+      if(wonPlayers.length == 3) return -1;
+      if (prev == 3) {
+        prev = 0;
+      } else {
+        prev++;
+      }
+      while(wonPlayers.includes(prev)){
+        if(prev==3){
+          prev=0;
+        }else{
+          prev++;
+        }
+      }
+      return prev;
+    });
+  };
 
   const handleRoll = () => {
     setIsRolled(true);
@@ -129,13 +208,13 @@ export default function IndianLudo() {
       let homePos = { x: -1, y: -1 },
         color = "";
       if (i == 0) {
-        homePos = { x: 0, y: 2 };
+        homePos = { x: 4, y: 2 };
         color = "red";
       } else if (i == 1) {
         homePos = { x: 2, y: 4 };
         color = "yellow";
       } else if (i == 2) {
-        homePos = { x: 4, y: 2 };
+        homePos = { x: 0, y: 2 };
         color = "blue";
       } else if (i == 3) {
         homePos = { x: 2, y: 0 };
@@ -161,7 +240,6 @@ export default function IndianLudo() {
     }
     setPlayers(() => [...array]);
 
-    console.log("mount");
 
     // getNextCell({x:2, });
   }, []);
