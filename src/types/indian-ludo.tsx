@@ -1,18 +1,18 @@
 type indianLudoPlayer = {
   name: string;
   id: number;
-  home: indianLudoObject | null,
-  positions: indianLudoObject[],
-  color:string
+  home: { x: number; y: number } | null;
+  positions: { x: number; y: number }[];
+  color: string;
 };
 
 type indianLudoObject = {
     id:number,
-    players:{player:indianLudoPlayer, count:number}[],
+    players:{player:number, count:number}[],
     position:{x:number, y:number},
     isHome:boolean,
     isDestination:boolean,
-    homeOf: indianLudoPlayer | null
+    homeOf: number | null
 };
 
 export type { indianLudoObject, indianLudoPlayer };

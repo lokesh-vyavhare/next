@@ -3,10 +3,10 @@
 import { indianLudoObject, indianLudoPlayer } from "@/types/indian-ludo";
 import { useEffect, useState } from "react";
 import style from "../../styles/indian-ludo/style.module.css";
-import {getNextCell} from './helper'
+import {getNextCell, safeJsonParse} from './helper'
 
 const default_array: indianLudoObject[][] = [];
-const players_array: indianLudoPlayer[] = [];
+const playerDefaultArray: indianLudoPlayer[] = [];
 
 // setting default grid
 for (let i = 0; i < 5; i++) {
@@ -34,23 +34,64 @@ for (let i = 0; i < 5; i++) {
   default_array.push(row);
 }
 
+// setting default player array
+for (let i = 0; i < 4; i++) {
+  let homePos = { x: -1, y: -1 },
+    color = "";
+  if (i == 0) {
+    homePos = { x: 4, y: 2 };
+    color = "red";
+  } else if (i == 1) {
+    homePos = { x: 2, y: 4 };
+    color = "yellow";
+  } else if (i == 2) {
+    homePos = { x: 0, y: 2 };
+    color = "blue";
+  } else if (i == 3) {
+    homePos = { x: 2, y: 0 };
+    color = "green";
+  }
+
+  const player: indianLudoPlayer = {
+    name: `Player-${i + 1}`,
+    home: homePos || null,
+    id: i,
+    positions: [],
+    color,
+  };
+
+  playerDefaultArray.push(player);
+  if (homePos.x >= 0 && homePos.y >= 0) {
+      default_array[homePos.x][homePos.y].homeOf = player.id;
+      default_array[homePos.x][homePos.y].players = [{ player: player.id, count: 4 }];
+  }
+}
 export default function IndianLudo() {
   const [ludo, setLudo] = useState(default_array);
-  const [players, setPlayers] = useState(players_array);
+  const [players, setPlayers] = useState(playerDefaultArray);
   const [turn, setTurn] = useState(0);
   const [isRolled, setIsRolled] = useState(false);
   const [roll, setRoll] = useState(0);
-  // const 
 
-  const no = 4;
 
   // click after roll is diced: to move pawn
-  const pawnClick = (indianLudoObject:indianLudoObject, playerpawns:{player:indianLudoPlayer, count:number})=> {
+  const pawnClick = (indianLudoObject:indianLudoObject, id:number)=> {
     
+    // get data
     const {position} = indianLudoObject;
-    const {player} = playerpawns;
-    const result = getNextCell(position, player.home, roll);
+    const player = players[id];
 
+    // result cell after move
+    let result;
+
+    if ((typeof player.home?.x) == 'number' && typeof(player.home?.y) == 'number')
+      result = getNextCell(
+        position,
+        ludo[player.home?.x][player.home?.y],
+        roll
+      );
+
+    if(!result) return;
     if(result.x<0 && result.y<0) return;
 
     let isMoveValid = true, isKill=false;
@@ -66,10 +107,10 @@ export default function IndianLudo() {
 
         if (!cell.isHome || !cell.isDestination) {
           cell.players.forEach((player_d) => {
-            if (player_d.player.id == player.id) {
+            if (player_d.player == player.id) {
               isMoveValid = false;
             }else{
-              removedPlayer.push(player_d.player.id);
+              removedPlayer.push(player_d.player);
             }
 
           });
@@ -81,9 +122,9 @@ export default function IndianLudo() {
         if (!isMoveValid) return prev;
 
         if (!cell.isHome) {
-          cell.players.push({ count: 1, player });
+          cell.players.push({ count: 1, player:player.id });
           cell.players = cell.players.filter(
-            (val) => val.player.id == player.id
+            (val) => val.player == player.id
           );
 
           players.forEach((player_r)=>{
@@ -93,15 +134,18 @@ export default function IndianLudo() {
               let findIndex =  -1;
 
               if(player_r.home){
-                player_r.home.players.forEach((val, ind)=>{
-                  if(val.player.id == player_r.id){
+                ludo[player_r.home.x][player_r.home.y].players.forEach((val, ind) => {
+                  if (val.player == player_r.id) {
                     val.count++;
                     findIndex = ind;
                   }
-                })
+                });
 
                 if(findIndex==-1){
-                  player_r.home?.players.push({ player: player_r, count: 1 });
+                 ludo[player_r.home.x][player_r.home.y]?.players.push({
+                   player: player_r.id,
+                   count: 1,
+                 });
                 }
               }
             }
@@ -110,14 +154,14 @@ export default function IndianLudo() {
           let notExists = true;
 
           cell.players.forEach((player_d) => {
-            if (player_d.player.id == player.id) {
+            if (player_d.player == player.id) {
               player_d.count++;
               notExists = false;
             }
           });
 
           if (notExists) {
-            cell.players.push({ count: 1, player });
+            cell.players.push({ count: 1, player:player.id });
           }
         }
       }
@@ -126,7 +170,7 @@ export default function IndianLudo() {
       const oldCell = prev[position.y][position.x];
       let iscountZero = false;
       oldCell.players.forEach((player_d) => {
-        if (player.id == player_d.player.id) {
+        if (player.id == player_d.player) {
           player_d.count--;
 
           if (!player_d.count) {
@@ -135,12 +179,12 @@ export default function IndianLudo() {
         }
       });
       if (iscountZero)
-        oldCell.players = oldCell.players.filter((val) => val.player.id != player.id);
+        oldCell.players = oldCell.players.filter((val) => val.player != player.id);
 
       if(result.x ==2 && result.y==2){
         prev[2][2].players.forEach((val)=>{
           if(val.count == 4){
-            wonPlayers.push(val.player.id);
+            wonPlayers.push(val.player);
           }
         })
       }
@@ -153,12 +197,37 @@ export default function IndianLudo() {
         handToNextPerson(wonPlayers);
       }
       setRoll(0);
-
       return prev;
     });
 
+
     
   }
+
+  const handleLocalSave = () => {
+    localStorage.setItem("player-current-state", JSON.stringify(players));
+    localStorage.setItem("ludo-current-state", JSON.stringify(ludo));
+    localStorage.setItem("ludo-current-turn", JSON.stringify(turn));
+  }
+
+  const handleReset = () => {
+    setLudo(default_array);
+    setPlayers(playerDefaultArray);
+    setTurn(0);
+  }
+
+  const handleRetreive = () => {
+    const ludoState = safeJsonParse<indianLudoObject[][]>("ludo-current-state");
+    if (ludoState?.length) setLudo(ludoState);
+
+    const playerState = safeJsonParse<indianLudoPlayer[]>(
+      "player-current-state"
+    );
+    if (playerState?.length) setPlayers(playerState);
+
+    const turnState = safeJsonParse<number>("player-current-turn");
+    if (turnState) setTurn(turnState);
+  };
 
   const handToNextPerson = (wonPlayers:number[]) => {
     setIsRolled(false);
@@ -202,47 +271,17 @@ export default function IndianLudo() {
 
   // setting first data
   useEffect(() => {
-    const array: indianLudoPlayer[] = [];
+    const ludoState = safeJsonParse<indianLudoObject[][]>("ludo-current-state");
+    if (ludoState?.length) setLudo(ludoState);
+    
+    const playerState = safeJsonParse<indianLudoPlayer[]>("player-current-state");
+    if (playerState?.length) setPlayers(playerState);
 
-    for (let i = 0; i < no; i++) {
-      let homePos = { x: -1, y: -1 },
-        color = "";
-      if (i == 0) {
-        homePos = { x: 4, y: 2 };
-        color = "red";
-      } else if (i == 1) {
-        homePos = { x: 2, y: 4 };
-        color = "yellow";
-      } else if (i == 2) {
-        homePos = { x: 0, y: 2 };
-        color = "blue";
-      } else if (i == 3) {
-        homePos = { x: 2, y: 0 };
-        color = "green";
-      }
+    const turnState = safeJsonParse<number>("player-current-turn");
+    if (turnState) setTurn(turnState);
 
-      const player: indianLudoPlayer = {
-        name: `Player-${i + 1}`,
-        home: ludo[homePos.x][homePos.y] || null,
-        id: i,
-        positions: [],
-        color,
-      };
-
-      array.push(player);
-      if (homePos.x >= 0 && homePos.y >= 0) {
-        setLudo((prev) => {
-          prev[homePos.x][homePos.y].homeOf = player;
-          prev[homePos.x][homePos.y].players = [{player, count:4}]; 
-          return prev;
-        });
-      }
-    }
-    setPlayers(() => [...array]);
-
-
-    // getNextCell({x:2, });
   }, []);
+
 
   return (
     <section>
@@ -257,7 +296,9 @@ export default function IndianLudo() {
                   {cell.isHome ? (
                     <div
                       className={style.home}
-                      data-home-color={cell.homeOf?.color}
+                      data-home-color={
+                        cell.homeOf ? players[cell.homeOf].color : ""
+                      }
                     >
                       <span></span>
                       <span></span>
@@ -280,19 +321,22 @@ export default function IndianLudo() {
 
                   {cell.players.map((playerpawns) => (
                     <button
-                      key={`player-goti-${playerpawns.player.name}`}
+                      key={`player-goti-${players[playerpawns.player].name}`}
                       className={`${style.playerpawns} ${
-                        playerpawns.player.id == players[turn].id && roll
+                        players[playerpawns.player].id == players[turn].id &&
+                        roll
                           ? style.playerpawnsOnTurn
                           : ""
                       }`}
-                      data-player-color={playerpawns.player.color}
+                      data-player-color={players[playerpawns.player].color}
                       onClick={() => {
-                        pawnClick(cell, playerpawns);
+                        pawnClick(cell, playerpawns.player);
                       }}
-                      disabled={!isRolled || turn != playerpawns.player.id}
+                      disabled={
+                        !isRolled || turn != players[playerpawns.player].id
+                      }
                     >
-                      { playerpawns.count}
+                      {playerpawns.count}
                     </button>
                   ))}
                 </div>
@@ -311,16 +355,22 @@ export default function IndianLudo() {
                     {roll ? roll : "-"}
                   </p>
                 ) : (
-                  <button
-                    onClick={handleRoll}
-                    disabled={roll ? true : false}
-                    style={{
-                      backgroundColor: players[turn].color,
-                      color: "black",
-                    }}
-                  >
-                    Roll
-                  </button>
+                  <div>
+                    <button
+                      onClick={handleRoll}
+                      disabled={roll ? true : false}
+                      style={{
+                        backgroundColor: players[turn].color,
+                        color: "black",
+                      }}
+                    >
+                      Roll
+                    </button>
+
+                    <button onClick={handleLocalSave}>Save</button>
+                    <button onClick={handleReset}>Reset</button>
+                    <button onClick={handleRetreive}>Retreive</button>
+                  </div>
                 )}
               </div>
             </div>

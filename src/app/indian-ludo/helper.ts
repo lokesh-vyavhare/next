@@ -57,4 +57,16 @@ const getNextCell = (position:{x:number, y:number}, home:indianLudoObject|null, 
     return result;
 };
 
-export { getNextCell };
+const safeJsonParse = <T>(key: string): T | null => {
+  try {
+    const item = localStorage.getItem(key); // Fetch item from localStorage
+    if (!item) return null; // Return null if item doesn't exist
+    return JSON.parse(item) as T; // Parse the JSON and cast to type T
+  } catch (error) {
+    console.error(`Error parsing JSON from localStorage key "${key}":`, error);
+    return null;
+  }
+};
+
+
+export { getNextCell, safeJsonParse};
