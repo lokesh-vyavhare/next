@@ -3,7 +3,7 @@
 import { indianLudoObject, indianLudoPlayer } from "@/types/indian-ludo";
 import { useEffect, useState } from "react";
 import style from "../../styles/indian-ludo/style.module.css";
-import {getNextCell, safeJsonParse} from './helper'
+import {getNextCell, handleCellMove, safeJsonParse} from './helper'
 
 const default_array: indianLudoObject[][] = [];
 const playerDefaultArray: indianLudoPlayer[] = [];
@@ -121,49 +121,7 @@ export default function IndianLudo() {
 
         if (!isMoveValid) return prev;
 
-        if (!cell.isHome) {
-          cell.players.push({ count: 1, player:player.id });
-          cell.players = cell.players.filter(
-            (val) => val.player == player.id
-          );
-
-          players.forEach((player_r)=>{
-            if(removedPlayer.includes(player_r.id)){
-              isKill = true;
-
-              let findIndex =  -1;
-
-              if(player_r.home){
-                ludo[player_r.home.x][player_r.home.y].players.forEach((val, ind) => {
-                  if (val.player == player_r.id) {
-                    val.count++;
-                    findIndex = ind;
-                  }
-                });
-
-                if(findIndex==-1){
-                 ludo[player_r.home.x][player_r.home.y]?.players.push({
-                   player: player_r.id,
-                   count: 1,
-                 });
-                }
-              }
-            }
-          })
-        } else {
-          let notExists = true;
-
-          cell.players.forEach((player_d) => {
-            if (player_d.player == player.id) {
-              player_d.count++;
-              notExists = false;
-            }
-          });
-
-          if (notExists) {
-            cell.players.push({ count: 1, player:player.id });
-          }
-        }
+        isKill = handleCellMove(cell, player, players, removedPlayer, ludo);
       }
 
 

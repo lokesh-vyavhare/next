@@ -1,4 +1,4 @@
-import { indianLudoObject } from "@/types/indian-ludo";
+import { indianLudoObject, indianLudoPlayer } from "@/types/indian-ludo";
 
 const getNextCell = (
   position: { x: number; y: number },
@@ -71,7 +71,6 @@ const checkValidForInnerRingEntry = (
   }
   return isValidaForNext;
 };
-
 const checkValidForGoal = (
   result: { x: number; y: number },
   position: { x: number; y: number } | null
@@ -109,7 +108,6 @@ const checkValidForGoal = (
   }
   return isValidaForNext;
 };
-
 const checkValidForOuterRing = (result: { x: number; y: number }): boolean => {
   let isValidaForNext = true;
 
@@ -147,6 +145,61 @@ const checkValidForInnerRing = (result: { x: number; y: number }): boolean => {
   return isValidaForNext;
 };
 
+const handleCellMove = (
+  cell: indianLudoObject,
+  player: indianLudoPlayer,
+  players: indianLudoPlayer[],
+  removedPlayer: number[],
+  ludo: indianLudoObject[][]
+): boolean => {
+
+  let isKill = false;
+  
+  if (!cell.isHome) {
+    cell.players.push({ count: 1, player: player.id });
+    cell.players = cell.players.filter((val) => val.player == player.id);
+
+    players.forEach((player_r) => {
+      if (removedPlayer.includes(player_r.id)) {
+        isKill = true;
+
+        let findIndex = -1;
+
+        if (player_r.home) {
+          ludo[player_r.home.x][player_r.home.y].players.forEach((val, ind) => {
+            if (val.player == player_r.id) {
+              val.count++;
+              findIndex = ind;
+            }
+          });
+
+          if (findIndex == -1) {
+            ludo[player_r.home.x][player_r.home.y]?.players.push({
+              player: player_r.id,
+              count: 1,
+            });
+          }
+        }
+      }
+    });
+  } else {
+    let notExists = true;
+
+    cell.players.forEach((player_d) => {
+      if (player_d.player == player.id) {
+        player_d.count++;
+        notExists = false;
+      }
+    });
+
+    if (notExists) {
+      cell.players.push({ count: 1, player: player.id });
+    }
+  }
+
+  return isKill;
+};
+
 const safeJsonParse = <T>(key: string): T | null => {
   try {
     const item = localStorage.getItem(key); // Fetch item from localStorage
@@ -158,4 +211,4 @@ const safeJsonParse = <T>(key: string): T | null => {
   }
 };
 
-export { getNextCell, safeJsonParse };
+export { getNextCell, safeJsonParse, handleCellMove };
