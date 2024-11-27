@@ -3,10 +3,10 @@
 import { indianLudoObject, indianLudoPlayer } from "@/types/indian-ludo";
 import { useEffect, useState } from "react";
 import style from "../../styles/indian-ludo/style.module.css";
-import {getNextCell} from './helper'
+import {getNextCell, handleCellMove, safeJsonParse} from './helper'
 
 const default_array: indianLudoObject[][] = [];
-const players_array: indianLudoPlayer[] = [];
+const playerDefaultArray: indianLudoPlayer[] = [];
 
 // setting default grid
 for (let i = 0; i < 5; i++) {
@@ -34,72 +34,178 @@ for (let i = 0; i < 5; i++) {
   default_array.push(row);
 }
 
+// setting default player array
+for (let i = 0; i < 4; i++) {
+  let homePos = { x: -1, y: -1 },
+    color = "";
+  if (i == 0) {
+    homePos = { x: 4, y: 2 };
+    color = "red";
+  } else if (i == 1) {
+    homePos = { x: 2, y: 4 };
+    color = "yellow";
+  } else if (i == 2) {
+    homePos = { x: 0, y: 2 };
+    color = "blue";
+  } else if (i == 3) {
+    homePos = { x: 2, y: 0 };
+    color = "green";
+  }
+
+  const player: indianLudoPlayer = {
+    name: `Player-${i + 1}`,
+    home: homePos || null,
+    id: i,
+    positions: [],
+    color,
+  };
+
+  playerDefaultArray.push(player);
+  if (homePos.x >= 0 && homePos.y >= 0) {
+      default_array[homePos.x][homePos.y].homeOf = player.id;
+      default_array[homePos.x][homePos.y].players = [{ player: player.id, count: 4 }];
+  }
+}
 export default function IndianLudo() {
   const [ludo, setLudo] = useState(default_array);
-  const [players, setPlayers] = useState(players_array);
+  const [players, setPlayers] = useState(playerDefaultArray);
   const [turn, setTurn] = useState(0);
   const [isRolled, setIsRolled] = useState(false);
   const [roll, setRoll] = useState(0);
-  // const 
 
-  const no = 4;
 
   // click after roll is diced: to move pawn
-  const pawnClick = (indianLudoObject:indianLudoObject, playerpawns:{player:indianLudoPlayer, count:number})=> {
+  const pawnClick = (indianLudoObject:indianLudoObject, id:number)=> {
     
+    // get data
     const {position} = indianLudoObject;
-    const {player} = playerpawns;
-    const result = getNextCell(position, player.home, roll);
+    const player = players[id];
 
-    setLudo(prev=>{
-      prev.forEach((row)=>{
+    // result cell after move
+    let result;
 
-        row.forEach((cell)=>{
-          // reducing player for original position
-          if(position.x == cell.position.x && position.y == cell.position.y){
+    if ((typeof player.home?.x) == 'number' && typeof(player.home?.y) == 'number')
+      result = getNextCell(
+        position,
+        ludo[player.home?.x][player.home?.y],
+        roll
+      );
 
-            let iscountZero = false;
-            cell.players.forEach((player_d)=>{
-              if(player.id == player_d.player.id){
-                player_d.count--;
+    if(!result) return;
+    if(result.x<0 && result.y<0) return;
 
-                if(!player_d.count){
-                  iscountZero = true;
-                }
-              }
+    let isMoveValid = true, isKill=false;
+    const wonPlayers:number[]=[];
 
-            })
-            if(iscountZero) cell.players = cell.players.filter((val)=>val.player.id != player.id);
-          }
+    setLudo((prev) => {
 
-          // adding player in new position
-          if(result.x == cell.position.x && result.y == cell.position.y){
-            let notExists = true;
+      const cell = prev[result.y][result.x];
 
-            cell.players.forEach((player_d)=>{
-              if(player_d.player.id == player.id){
-                player_d.count++;
-                notExists = false;
-              }
-            })
+      if (result.x == cell.position.x && result.y == cell.position.y) {
 
-            if(notExists){
-              cell.players.push({count:1, player})
+        const removedPlayer:number[] = [];
+
+        if (!cell.isHome || !cell.isDestination) {
+          cell.players.forEach((player_d) => {
+            if (player_d.player == player.id) {
+              isMoveValid = false;
+            }else{
+              removedPlayer.push(player_d.player);
             }
+
+          });
+        }
+
+        isKill = !!(removedPlayer.length);
+
+
+        if (!isMoveValid) return prev;
+
+        isKill = handleCellMove(cell, player, players, removedPlayer, ludo);
+      }
+
+
+      const oldCell = prev[position.y][position.x];
+      let iscountZero = false;
+      oldCell.players.forEach((player_d) => {
+        if (player.id == player_d.player) {
+          player_d.count--;
+
+          if (!player_d.count) {
+            iscountZero = true;
+          }
+        }
+      });
+      if (iscountZero)
+        oldCell.players = oldCell.players.filter((val) => val.player != player.id);
+
+      if(result.x ==2 && result.y==2){
+        prev[2][2].players.forEach((val)=>{
+          if(val.count == 4){
+            wonPlayers.push(val.player);
           }
         })
-      })
+      }
 
+
+      if (
+        !(roll == 4 || roll == 8 || isKill || (result.x == 2 && result.y == 2)) ||
+        wonPlayers.includes(player.id)
+      ) {
+        handToNextPerson(wonPlayers);
+      }
+      setRoll(0);
       return prev;
     });
-    setIsRolled(false);
-    setRoll(0)
-    setTurn(prev=>{
-      if(prev==3){
-        return 0
-      }else return ++prev;
-    })
+
+
+    
   }
+
+  const handleLocalSave = () => {
+    localStorage.setItem("player-current-state", JSON.stringify(players));
+    localStorage.setItem("ludo-current-state", JSON.stringify(ludo));
+    localStorage.setItem("ludo-current-turn", JSON.stringify(turn));
+  }
+
+  const handleReset = () => {
+    setLudo(default_array);
+    setPlayers(playerDefaultArray);
+    setTurn(0);
+  }
+
+  const handleRetreive = () => {
+    const ludoState = safeJsonParse<indianLudoObject[][]>("ludo-current-state");
+    if (ludoState?.length) setLudo(ludoState);
+
+    const playerState = safeJsonParse<indianLudoPlayer[]>(
+      "player-current-state"
+    );
+    if (playerState?.length) setPlayers(playerState);
+
+    const turnState = safeJsonParse<number>("player-current-turn");
+    if (turnState) setTurn(turnState);
+  };
+
+  const handToNextPerson = (wonPlayers:number[]) => {
+    setIsRolled(false);
+    setTurn((prev) => {
+      if(wonPlayers.length == 3) return -1;
+      if (prev == 3) {
+        prev = 0;
+      } else {
+        prev++;
+      }
+      while(wonPlayers.includes(prev)){
+        if(prev==3){
+          prev=0;
+        }else{
+          prev++;
+        }
+      }
+      return prev;
+    });
+  };
 
   const handleRoll = () => {
     setIsRolled(true);
@@ -123,48 +229,17 @@ export default function IndianLudo() {
 
   // setting first data
   useEffect(() => {
-    const array: indianLudoPlayer[] = [];
+    const ludoState = safeJsonParse<indianLudoObject[][]>("ludo-current-state");
+    if (ludoState?.length) setLudo(ludoState);
+    
+    const playerState = safeJsonParse<indianLudoPlayer[]>("player-current-state");
+    if (playerState?.length) setPlayers(playerState);
 
-    for (let i = 0; i < no; i++) {
-      let homePos = { x: -1, y: -1 },
-        color = "";
-      if (i == 0) {
-        homePos = { x: 0, y: 2 };
-        color = "red";
-      } else if (i == 1) {
-        homePos = { x: 2, y: 4 };
-        color = "yellow";
-      } else if (i == 2) {
-        homePos = { x: 4, y: 2 };
-        color = "blue";
-      } else if (i == 3) {
-        homePos = { x: 2, y: 0 };
-        color = "green";
-      }
+    const turnState = safeJsonParse<number>("player-current-turn");
+    if (turnState) setTurn(turnState);
 
-      const player: indianLudoPlayer = {
-        name: `Player-${i + 1}`,
-        home: ludo[homePos.x][homePos.y] || null,
-        id: i,
-        positions: [],
-        color,
-      };
-
-      array.push(player);
-      if (homePos.x >= 0 && homePos.y >= 0) {
-        setLudo((prev) => {
-          prev[homePos.x][homePos.y].homeOf = player;
-          prev[homePos.x][homePos.y].players = [{player, count:4}]; 
-          return prev;
-        });
-      }
-    }
-    setPlayers(() => [...array]);
-
-    console.log("mount");
-
-    // getNextCell({x:2, });
   }, []);
+
 
   return (
     <section>
@@ -179,7 +254,9 @@ export default function IndianLudo() {
                   {cell.isHome ? (
                     <div
                       className={style.home}
-                      data-home-color={cell.homeOf?.color}
+                      data-home-color={
+                        cell.homeOf ? players[cell.homeOf].color : ""
+                      }
                     >
                       <span></span>
                       <span></span>
@@ -202,19 +279,22 @@ export default function IndianLudo() {
 
                   {cell.players.map((playerpawns) => (
                     <button
-                      key={`player-goti-${playerpawns.player.name}`}
+                      key={`player-goti-${players[playerpawns.player].name}`}
                       className={`${style.playerpawns} ${
-                        playerpawns.player.id == players[turn].id && roll
+                        players[playerpawns.player].id == players[turn].id &&
+                        roll
                           ? style.playerpawnsOnTurn
                           : ""
                       }`}
-                      data-player-color={playerpawns.player.color}
+                      data-player-color={players[playerpawns.player].color}
                       onClick={() => {
-                        pawnClick(cell, playerpawns);
+                        pawnClick(cell, playerpawns.player);
                       }}
-                      disabled={!isRolled || turn != playerpawns.player.id}
+                      disabled={
+                        !isRolled || turn != players[playerpawns.player].id
+                      }
                     >
-                      { playerpawns.count}
+                      {playerpawns.count}
                     </button>
                   ))}
                 </div>
@@ -233,16 +313,22 @@ export default function IndianLudo() {
                     {roll ? roll : "-"}
                   </p>
                 ) : (
-                  <button
-                    onClick={handleRoll}
-                    disabled={roll ? true : false}
-                    style={{
-                      backgroundColor: players[turn].color,
-                      color: "black",
-                    }}
-                  >
-                    Roll
-                  </button>
+                  <div>
+                    <button
+                      onClick={handleRoll}
+                      disabled={roll ? true : false}
+                      style={{
+                        backgroundColor: players[turn].color,
+                        color: "black",
+                      }}
+                    >
+                      Roll
+                    </button>
+
+                    <button onClick={handleLocalSave}>Save</button>
+                    <button onClick={handleReset}>Reset</button>
+                    <button onClick={handleRetreive}>Retreive</button>
+                  </div>
                 )}
               </div>
             </div>
